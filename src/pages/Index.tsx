@@ -26,7 +26,7 @@ const Index = () => {
         transition={{ delay: 0.2 }}
         className="gradient-text mb-3 text-center text-4xl font-extrabold tracking-tight sm:text-5xl"
       >
-        BusVerify
+        Smart Ride System
       </motion.h1>
 
       <motion.p
@@ -35,8 +35,17 @@ const Index = () => {
         transition={{ delay: 0.3 }}
         className="mb-2 max-w-md text-center text-lg text-muted-foreground"
       >
-        Barcode-powered college bus boarding verification system
+        Student Bus Attendance
       </motion.p>
+
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 0.35 }}
+        className="mb-2 max-w-md text-center text-sm font-medium text-primary/70"
+      >
+        Barcode Based Student Bus Attendance Tracking
+      </motion.div>
 
       <motion.div
         initial={{ opacity: 0 }}
