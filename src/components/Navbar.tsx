@@ -6,7 +6,7 @@ const Navbar = () => {
   const location = useLocation();
 
   const links = [
-    { to: "/", label: "Scanner", icon: ScanLine },
+    { to: "/scan", label: "Scanner", icon: ScanLine },
     { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   ];
 
