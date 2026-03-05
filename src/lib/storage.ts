@@ -1,10 +1,12 @@
-// Local storage utility for QR bus verification system
+// Local storage utility for Barcode Bus Verification System
 
 export interface Student {
   id: string;
+  barcode: string;
   name: string;
   registerNumber: string;
   department: string;
+  college: string;
   phone: string;
 }
 
@@ -15,22 +17,22 @@ export interface ScanRecord {
   date: string;
 }
 
-// Pre-seeded student database
+// Pre-seeded student database with barcode IDs
 const DEFAULT_STUDENTS: Student[] = [
-  { id: "STU001", name: "Arun Kumar", registerNumber: "21CS101", department: "Computer Science", phone: "+91 98765 43210" },
-  { id: "STU002", name: "Priya Sharma", registerNumber: "21EC102", department: "Electronics", phone: "+91 98765 43211" },
-  { id: "STU003", name: "Rahul Verma", registerNumber: "21ME103", department: "Mechanical", phone: "+91 98765 43212" },
-  { id: "STU004", name: "Sneha Patel", registerNumber: "21CS104", department: "Computer Science", phone: "+91 98765 43213" },
-  { id: "STU005", name: "Vikram Singh", registerNumber: "21EE105", department: "Electrical", phone: "+91 98765 43214" },
-  { id: "STU006", name: "Divya Nair", registerNumber: "21CS106", department: "Computer Science", phone: "+91 98765 43215" },
-  { id: "STU007", name: "Karthik Raj", registerNumber: "21ME107", department: "Mechanical", phone: "+91 98765 43216" },
-  { id: "STU008", name: "Anjali Gupta", registerNumber: "21EC108", department: "Electronics", phone: "+91 98765 43217" },
-  { id: "STU009", name: "Mohammed Arif", registerNumber: "21CS109", department: "Computer Science", phone: "+91 98765 43218" },
-  { id: "STU010", name: "Lakshmi Iyer", registerNumber: "21EE110", department: "Electrical", phone: "+91 98765 43219" },
+  { id: "STU001", barcode: "10248", name: "Ethan Thomas Binu", registerNumber: "VML25CS114", college: "Vimal Jyothi Engineering College", department: "Computer Science", phone: "9846423448" },
+  { id: "STU002", barcode: "10249", name: "Priya Sharma", registerNumber: "VML25EC102", college: "Vimal Jyothi Engineering College", department: "Electronics", phone: "9876543211" },
+  { id: "STU003", barcode: "10250", name: "Rahul Verma", registerNumber: "VML25ME103", college: "Vimal Jyothi Engineering College", department: "Mechanical", phone: "9876543212" },
+  { id: "STU004", barcode: "10251", name: "Sneha Patel", registerNumber: "VML25CS104", college: "Vimal Jyothi Engineering College", department: "Computer Science", phone: "9876543213" },
+  { id: "STU005", barcode: "10252", name: "Vikram Singh", registerNumber: "VML25EE105", college: "Vimal Jyothi Engineering College", department: "Electrical", phone: "9876543214" },
+  { id: "STU006", barcode: "10253", name: "Divya Nair", registerNumber: "VML25CS106", college: "Vimal Jyothi Engineering College", department: "Computer Science", phone: "9876543215" },
+  { id: "STU007", barcode: "10254", name: "Karthik Raj", registerNumber: "VML25ME107", college: "Vimal Jyothi Engineering College", department: "Mechanical", phone: "9876543216" },
+  { id: "STU008", barcode: "10255", name: "Anjali Gupta", registerNumber: "VML25EC108", college: "Vimal Jyothi Engineering College", department: "Electronics", phone: "9876543217" },
+  { id: "STU009", barcode: "10256", name: "Mohammed Arif", registerNumber: "VML25CS109", college: "Vimal Jyothi Engineering College", department: "Computer Science", phone: "9876543218" },
+  { id: "STU010", barcode: "10257", name: "Lakshmi Iyer", registerNumber: "VML25EE110", college: "Vimal Jyothi Engineering College", department: "Electrical", phone: "9876543219" },
 ];
 
-const STUDENTS_KEY = "qr_bus_students";
-const SCANS_KEY = "qr_bus_scans";
+const STUDENTS_KEY = "barcode_bus_students";
+const SCANS_KEY = "barcode_bus_scans";
 
 function getTodayStr(): string {
   return new Date().toISOString().split("T")[0];
@@ -49,6 +51,11 @@ export function getStudentById(id: string): Student | undefined {
   return getStudents().find((s) => s.id === id);
 }
 
+/** Look up student by barcode number */
+export function getStudentByBarcode(barcode: string): Student | undefined {
+  return getStudents().find((s) => s.barcode === barcode);
+}
+
 export function getTodayScans(): ScanRecord[] {
   const stored = localStorage.getItem(SCANS_KEY);
   if (!stored) return [];
@@ -57,17 +64,18 @@ export function getTodayScans(): ScanRecord[] {
 }
 
 export function recordScan(
-  studentId: string,
+  barcode: string,
   mode: "morning" | "evening"
-): { success: boolean; duplicate: boolean; student?: Student } {
-  const student = getStudentById(studentId);
+): { success: boolean; duplicate: boolean; student?: Student; scanTime?: string } {
+  const student = getStudentByBarcode(barcode);
   if (!student) return { success: false, duplicate: false };
 
   const today = getTodayStr();
   const stored = localStorage.getItem(SCANS_KEY);
   const allScans: ScanRecord[] = stored ? JSON.parse(stored) : [];
 
-  const existing = allScans.find((s) => s.studentId === studentId && s.date === today);
+  const existing = allScans.find((s) => s.studentId === student.id && s.date === today);
+  const scanTime = new Date().toLocaleTimeString();
 
   if (existing) {
     if (mode === "morning" && existing.morningTime) {
@@ -76,20 +84,19 @@ export function recordScan(
     if (mode === "evening" && existing.eveningTime) {
       return { success: false, duplicate: true, student };
     }
-    // Update existing record
-    existing[mode === "morning" ? "morningTime" : "eveningTime"] = new Date().toLocaleTimeString();
+    existing[mode === "morning" ? "morningTime" : "eveningTime"] = scanTime;
   } else {
     allScans.push({
-      studentId,
+      studentId: student.id,
       date: today,
       ...(mode === "morning"
-        ? { morningTime: new Date().toLocaleTimeString() }
-        : { eveningTime: new Date().toLocaleTimeString() }),
+        ? { morningTime: scanTime }
+        : { eveningTime: scanTime }),
     });
   }
 
   localStorage.setItem(SCANS_KEY, JSON.stringify(allScans));
-  return { success: true, duplicate: false, student };
+  return { success: true, duplicate: false, student, scanTime };
 }
 
 export function getDashboardStats() {
@@ -98,14 +105,11 @@ export function getDashboardStats() {
   const morningCount = scans.filter((s) => s.morningTime).length;
   const eveningCount = scans.filter((s) => s.eveningTime).length;
 
-  // Missing = scanned morning but NOT scanned evening
   const missingStudents = scans
     .filter((s) => s.morningTime && !s.eveningTime)
     .map((s) => {
       const student = getStudentById(s.studentId);
-      return student
-        ? { ...student, morningTime: s.morningTime! }
-        : null;
+      return student ? { ...student, morningTime: s.morningTime! } : null;
     })
     .filter(Boolean) as (Student & { morningTime: string })[];
 

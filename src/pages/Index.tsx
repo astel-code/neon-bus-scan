@@ -35,7 +35,7 @@ const Index = () => {
         transition={{ delay: 0.3 }}
         className="mb-2 max-w-md text-center text-lg text-muted-foreground"
       >
-        QR-powered college bus boarding verification system
+        Barcode-powered college bus boarding verification system
       </motion.p>
 
       <motion.div
@@ -63,7 +63,7 @@ const Index = () => {
               <ScanLine className="h-7 w-7 text-neon-blue" />
             </div>
             <div>
-              <h3 className="text-lg font-bold text-foreground">Scan QR Code</h3>
+              <h3 className="text-lg font-bold text-foreground">Scan Barcode</h3>
               <p className="text-sm text-muted-foreground">Morning & evening boarding verification</p>
             </div>
           </motion.div>

@@ -1,9 +1,9 @@
-import { useEffect, useRef, useState } from "react";
+import { useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Html5Qrcode } from "html5-qrcode";
 import confetti from "canvas-confetti";
-import { Check, AlertTriangle, ScanLine, Sun, Moon } from "lucide-react";
-import { recordScan, type Student } from "@/lib/storage";
+import { Check, AlertTriangle, ScanLine, Sun, Moon, Clock } from "lucide-react";
+import { recordScan, getStudentByBarcode, type Student } from "@/lib/storage";
+import BarcodeScanner from "@/components/BarcodeScanner";
 
 type ScanMode = "morning" | "evening";
 
@@ -11,84 +11,53 @@ interface ScanResult {
   type: "success" | "duplicate" | "error";
   student?: Student;
   message: string;
+  scanTime?: string;
 }
 
 const ScanPage = () => {
   const [mode, setMode] = useState<ScanMode>("morning");
   const [scanning, setScanning] = useState(false);
   const [result, setResult] = useState<ScanResult | null>(null);
-  const scannerRef = useRef<Html5Qrcode | null>(null);
-  const containerRef = useRef<string>("qr-reader-" + Math.random().toString(36).slice(2));
 
-  const startScanner = async () => {
-    setResult(null);
-    setScanning(true);
-
-    try {
-      const scanner = new Html5Qrcode(containerRef.current);
-      scannerRef.current = scanner;
-
-      await scanner.start(
-        { facingMode: "environment" },
-        { fps: 10, qrbox: { width: 250, height: 250 } },
-        (decodedText) => {
-          handleScan(decodedText);
-          stopScanner();
-        },
-        () => {} // ignore errors during scanning
-      );
-    } catch {
+  const handleScan = useCallback(
+    (barcode: string) => {
+      // Stop scanner after reading
       setScanning(false);
-      // Fallback: show manual input
-      const id = prompt("Camera unavailable. Enter Student ID (e.g., STU001):");
-      if (id) handleScan(id.trim());
-    }
+
+      const res = recordScan(barcode, mode);
+
+      if (res.duplicate) {
+        setResult({
+          type: "duplicate",
+          student: res.student,
+          message: `Already scanned for ${mode}!`,
+        });
+      } else if (res.success && res.student) {
+        setResult({
+          type: "success",
+          student: res.student,
+          message: `${mode === "morning" ? "Morning" : "Evening"} scan recorded!`,
+          scanTime: res.scanTime,
+        });
+        confetti({
+          particleCount: 80,
+          spread: 70,
+          origin: { y: 0.6 },
+          colors: ["#6366f1", "#06b6d4", "#a855f7", "#ec4899"],
+        });
+      } else {
+        setResult({
+          type: "error",
+          message: `Student not found for barcode: ${barcode}`,
+        });
+      }
+    },
+    [mode]
+  );
+
+  const handleManualScan = (barcode: string) => {
+    handleScan(barcode);
   };
-
-  const stopScanner = () => {
-    if (scannerRef.current) {
-      scannerRef.current.stop().catch(() => {});
-      try { scannerRef.current.clear(); } catch {}
-      scannerRef.current = null;
-    }
-    setScanning(false);
-  };
-
-  const handleScan = (studentId: string) => {
-    const res = recordScan(studentId, mode);
-
-    if (res.duplicate) {
-      setResult({
-        type: "duplicate",
-        student: res.student,
-        message: `Already scanned for ${mode}!`,
-      });
-    } else if (res.success && res.student) {
-      setResult({
-        type: "success",
-        student: res.student,
-        message: `${mode === "morning" ? "Morning" : "Evening"} scan recorded!`,
-      });
-      // Fire confetti
-      confetti({
-        particleCount: 80,
-        spread: 70,
-        origin: { y: 0.6 },
-        colors: ["#6366f1", "#06b6d4", "#a855f7", "#ec4899"],
-      });
-    } else {
-      setResult({
-        type: "error",
-        message: "Student not found in database.",
-      });
-    }
-  };
-
-  useEffect(() => {
-    return () => {
-      stopScanner();
-    };
-  }, []);
 
   return (
     <motion.div
@@ -137,14 +106,26 @@ const ScanPage = () => {
             {mode === "morning" ? "Morning Boarding" : "Evening Return"}
           </h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            Position QR code within the scanner frame
+            Position the barcode within the scanner frame
           </p>
         </div>
 
-        {/* QR Reader Area */}
-        <div className="relative mx-auto mb-6 aspect-square max-w-[280px] overflow-hidden rounded-xl bg-muted/50">
-          <div id={containerRef.current} className="h-full w-full" />
-          {!scanning && !result && (
+        {/* Scanner Area */}
+        <div className="relative mx-auto mb-6 aspect-video max-w-[320px] overflow-hidden rounded-xl bg-muted/50">
+          {scanning ? (
+            <>
+              <BarcodeScanner onScan={handleScan} active={scanning} />
+              {/* Animated scan line overlay */}
+              <div className="pointer-events-none absolute inset-0">
+                <motion.div
+                  className="absolute left-4 right-4 h-0.5 bg-neon-blue"
+                  animate={{ top: ["10%", "90%", "10%"] }}
+                  transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+                  style={{ boxShadow: "0 0 12px hsl(200 95% 50% / 0.8)" }}
+                />
+              </div>
+            </>
+          ) : (
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-3">
               <motion.div
                 animate={{ scale: [1, 1.1, 1] }}
@@ -156,30 +137,23 @@ const ScanPage = () => {
               <p className="text-sm text-muted-foreground">Tap below to start scanning</p>
             </div>
           )}
-          {scanning && (
-            <div className="pointer-events-none absolute inset-0">
-              <motion.div
-                className="absolute left-4 right-4 h-0.5 bg-neon-blue"
-                animate={{ top: ["10%", "90%", "10%"] }}
-                transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
-                style={{ boxShadow: "0 0 12px hsl(200 95% 50% / 0.8)" }}
-              />
-            </div>
-          )}
         </div>
 
         {/* Scan Button */}
         <motion.button
           whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.98 }}
-          onClick={scanning ? stopScanner : startScanner}
+          onClick={() => {
+            setScanning((prev) => !prev);
+            setResult(null);
+          }}
           className={`btn-glow w-full rounded-xl py-3.5 text-sm font-bold transition-all ${
             scanning
               ? "bg-destructive text-destructive-foreground"
               : "bg-primary text-primary-foreground"
           }`}
         >
-          {scanning ? "Stop Scanner" : "Start Scanner"}
+          {scanning ? "Stop Scanner" : "Start Barcode Scanner"}
         </motion.button>
       </motion.div>
 
@@ -210,22 +184,19 @@ const ScanPage = () => {
                   <Check className="h-8 w-8 text-neon-green" />
                 </motion.div>
               )}
-              {result.type === "duplicate" && (
+              {(result.type === "duplicate" || result.type === "error") && (
                 <motion.div
                   initial={{ scale: 0 }}
                   animate={{ scale: 1 }}
-                  className="mb-3 flex h-16 w-16 items-center justify-center rounded-full bg-neon-orange/20"
+                  className={`mb-3 flex h-16 w-16 items-center justify-center rounded-full ${
+                    result.type === "duplicate" ? "bg-neon-orange/20" : "bg-destructive/20"
+                  }`}
                 >
-                  <AlertTriangle className="h-8 w-8 text-neon-orange" />
-                </motion.div>
-              )}
-              {result.type === "error" && (
-                <motion.div
-                  initial={{ scale: 0 }}
-                  animate={{ scale: 1 }}
-                  className="mb-3 flex h-16 w-16 items-center justify-center rounded-full bg-destructive/20"
-                >
-                  <AlertTriangle className="h-8 w-8 text-destructive" />
+                  <AlertTriangle
+                    className={`h-8 w-8 ${
+                      result.type === "duplicate" ? "text-neon-orange" : "text-destructive"
+                    }`}
+                  />
                 </motion.div>
               )}
 
@@ -250,6 +221,23 @@ const ScanPage = () => {
                     <span className="text-muted-foreground">Dept</span>
                     <span className="font-medium">{result.student.department}</span>
                   </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Phone</span>
+                    <span className="font-medium">{result.student.phone}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Mode</span>
+                    <span className="font-medium capitalize">{mode}</span>
+                  </div>
+                  {result.scanTime && (
+                    <div className="flex items-center justify-between">
+                      <span className="text-muted-foreground">Time</span>
+                      <span className="flex items-center gap-1 font-medium">
+                        <Clock className="h-3.5 w-3.5 text-neon-blue" />
+                        {result.scanTime}
+                      </span>
+                    </div>
+                  )}
                 </motion.div>
               )}
 
@@ -266,7 +254,7 @@ const ScanPage = () => {
         )}
       </AnimatePresence>
 
-      {/* Quick Manual Entry for Demo */}
+      {/* Demo Quick Buttons */}
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
@@ -274,23 +262,31 @@ const ScanPage = () => {
         className="mt-8"
       >
         <p className="mb-3 text-center text-xs text-muted-foreground">
-          Demo: Quick scan buttons (simulates QR codes)
+          Demo: Quick scan buttons (simulates barcodes)
         </p>
         <div className="grid grid-cols-5 gap-2">
-          {Array.from({ length: 10 }, (_, i) => {
-            const id = `STU${String(i + 1).padStart(3, "0")}`;
-            return (
-              <motion.button
-                key={id}
-                whileHover={{ scale: 1.08 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={() => handleScan(id)}
-                className="glass-card rounded-lg px-2 py-2 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
-              >
-                {id.replace("STU", "S")}
-              </motion.button>
-            );
-          })}
+          {[
+            { barcode: "10248", label: "10248" },
+            { barcode: "10249", label: "10249" },
+            { barcode: "10250", label: "10250" },
+            { barcode: "10251", label: "10251" },
+            { barcode: "10252", label: "10252" },
+            { barcode: "10253", label: "10253" },
+            { barcode: "10254", label: "10254" },
+            { barcode: "10255", label: "10255" },
+            { barcode: "10256", label: "10256" },
+            { barcode: "10257", label: "10257" },
+          ].map(({ barcode, label }) => (
+            <motion.button
+              key={barcode}
+              whileHover={{ scale: 1.08 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => handleManualScan(barcode)}
+              className="glass-card rounded-lg px-2 py-2 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
+            >
+              {label}
+            </motion.button>
+          ))}
         </div>
       </motion.div>
     </motion.div>
