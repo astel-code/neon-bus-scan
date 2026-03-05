@@ -267,15 +267,10 @@ const ScanPage = () => {
         <div className="grid grid-cols-5 gap-2">
           {[
             { barcode: "10248", label: "10248" },
-            { barcode: "10249", label: "10249" },
-            { barcode: "10250", label: "10250" },
-            { barcode: "10251", label: "10251" },
-            { barcode: "10252", label: "10252" },
-            { barcode: "10253", label: "10253" },
-            { barcode: "10254", label: "10254" },
-            { barcode: "10255", label: "10255" },
-            { barcode: "10256", label: "10256" },
-            { barcode: "10257", label: "10257" },
+            { barcode: "10335", label: "10335" },
+            { barcode: "10307", label: "10307" },
+            { barcode: "10247", label: "10247" },
+            { barcode: "10473", label: "10473" },
           ].map(({ barcode, label }) => (
             <motion.button
               key={barcode}
