@@ -89,32 +89,49 @@ export function recordScan(
   return { success: true, duplicate: false, student, scanTime };
 }
 
-/** Dashboard stats: present = scanned, missing = not scanned */
+/** Dashboard stats: separate morning and evening tracking */
 export function getDashboardStats() {
   const scans = getTodayScans();
   const students = getStudents();
 
-  // Unique student IDs that scanned today (any mode)
-  const scannedIds = new Set(scans.map((s) => s.studentId));
+  // Morning: scanned = present, unscanned = missing
+  const morningScannedIds = new Set(
+    scans.filter((s) => s.mode === "morning").map((s) => s.studentId)
+  );
+  const morningPresent = students.filter((s) => morningScannedIds.has(s.id));
+  const morningMissing = students.filter((s) => !morningScannedIds.has(s.id));
 
-  const presentStudents = students.filter((s) => scannedIds.has(s.id));
-  const missingStudents = students.filter((s) => !scannedIds.has(s.id));
+  // Evening: only students who scanned in morning but NOT in evening are "evening missing"
+  const eveningScannedIds = new Set(
+    scans.filter((s) => s.mode === "evening").map((s) => s.studentId)
+  );
+  const eveningPresent = students.filter((s) => eveningScannedIds.has(s.id));
+  const eveningMissing = students.filter(
+    (s) => morningScannedIds.has(s.id) && !eveningScannedIds.has(s.id)
+  );
 
   return {
     totalStudents: students.length,
-    presentCount: presentStudents.length,
-    missingCount: missingStudents.length,
-    presentStudents,
-    missingStudents,
+    morningPresentCount: morningPresent.length,
+    morningMissingCount: morningMissing.length,
+    eveningPresentCount: eveningPresent.length,
+    eveningMissingCount: eveningMissing.length,
+    morningPresent,
+    morningMissing,
+    eveningPresent,
+    eveningMissing,
   };
 }
 
 export function exportCSV(): string {
   const stats = getDashboardStats();
-  const headers = "Name,Register Number,Department,Phone\n";
-  const rows = stats.missingStudents
-    .map((s) => `${s.name},${s.registerNumber},${s.department},${s.phone}`)
-    .join("\n");
+  const headers = "Section,Name,Register Number,Department,Phone\n";
+  const formatRows = (list: Student[], section: string) =>
+    list.map((s) => `${section},${s.name},${s.registerNumber},${s.department},${s.phone}`).join("\n");
+  const rows = [
+    formatRows(stats.morningMissing, "Morning Missing"),
+    formatRows(stats.eveningMissing, "Evening Missing"),
+  ].filter(Boolean).join("\n");
   return headers + rows;
 }
 
