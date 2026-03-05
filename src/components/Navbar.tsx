@@ -21,7 +21,7 @@ const Navbar = () => {
         <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/20 neon-glow">
           <Bus className="h-5 w-5 text-neon-purple" />
         </div>
-        <span className="gradient-text text-lg font-bold tracking-tight">BusVerify</span>
+        <span className="gradient-text text-lg font-bold tracking-tight">Smart Ride</span>
       </Link>
 
       <div className="flex gap-1">

@@ -160,7 +160,7 @@ const Dashboard = () => {
       <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}
         className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="gradient-text text-2xl font-bold">Admin Dashboard</h1>
+          <h1 className="gradient-text text-2xl font-bold">Smart Ride System Dashboard</h1>
           <p className="mt-1 text-sm text-muted-foreground">
             {new Date().toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}
           </p>
